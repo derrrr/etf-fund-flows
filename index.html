@@ -231,15 +231,8 @@
   function buildChart(item) {
     item.chart = Highcharts.stockChart(`canvas_${item.ticker}`, {
       chart: { 
-        backgroundColor: 'transparent', 
-        animation: false, 
-        marginLeft: 50, 
-        marginRight: 50,
-        // Disable scroll-wheel zooming
-        zooming: {
-          mouseWheel: false,
-          type: null
-        }
+        backgroundColor: 'transparent', animation: false, marginLeft: 50, marginRight: 50,
+        zooming: { mouseWheel: false, type: null }
       },
       rangeSelector: { enabled: false },
       navigator: { enabled: false },
@@ -248,7 +241,9 @@
       tooltip: { 
         shared: true, split: false, valueDecimals: 2,
         backgroundColor: 'rgba(255,255,255,0.95)', borderWidth: 1, borderColor: '#e2e8f0',
-        headerFormat: '', pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} M</b><br/>'
+        headerFormat: '', 
+        // 單位更新為 B
+        pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} B</b><br/>'
       },
       title: {
         text: `<span style="font-size:18px; font-weight:700;">${item.ticker}</span> <span style="font-size:12px; font-weight:400; color:#64748b; margin-left:6px;">${item.category}</span>`,
@@ -267,8 +262,8 @@
         { title: { text: null }, opposite: true, gridLineColor: 'transparent', labels: { style: { fontSize: '10px', color: '#94a3b8' } } }
       ],
       series: [
-        { name: 'Daily Flow', type: 'column', color: '#337ab7', negativeColor: '#d9534f', borderWidth: 0, zIndex: 2, dataGrouping: { enabled: false } },
-        { name: 'Cumulative', type: 'area', yAxis: 1, color: 'rgba(99, 102, 241, 0.2)', fillOpacity: 0.1, lineWidth: 1.2, zIndex: 1, marker: { enabled: false }, dataGrouping: { enabled: false } }
+        { name: 'Flow', type: 'column', color: '#337ab7', negativeColor: '#d9534f', borderWidth: 0, zIndex: 2, dataGrouping: { enabled: false } },
+        { name: 'Cumulative', type: 'area', yAxis: 1, color: 'rgba(99, 102, 241, 0.2)', fillOpacity: 0.05, lineWidth: 1.2, zIndex: 1, marker: { enabled: false }, dataGrouping: { enabled: false } }
       ]
     });
     item.isInit = true;
@@ -303,7 +298,8 @@
     item.chart.series[0].setData(slice, false);
     item.chart.series[1].setData(cumArr, false);
     item.chart.xAxis[0].setExtremes(slice[0][0], slice[slice.length-1][0], true, false);
-    item.statsNode.innerHTML = `${state.currentLabel} Net Flows: <span class="${cumulative >= 0 ? 'val-pos' : 'val-neg'}">${cumulative.toFixed(2)} M</span>`;
+    // 單位更新為 B
+    item.statsNode.innerHTML = `${state.currentLabel} Net Flows: <span class="${cumulative >= 0 ? 'val-pos' : 'val-neg'}">${cumulative.toFixed(2)} B</span>`;
   }
 
   function refreshDashboard(btn) {
