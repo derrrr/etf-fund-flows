@@ -196,24 +196,24 @@
           chart: null, node: null, statsNode: null, total: 0, isInit: false
         };
         state.etfList.push(item);
-        createPlaceholder(item);
+        // Placeholders created but not appended yet
+        createPlaceholderNode(item);
       });
 
+      // Pass default button to trigger first sort and render
       refreshDashboard(document.querySelector('button[data-days="20"]'));
     } catch (err) {
       UI.grid.innerHTML = `<div class="loader" style="color:var(--neg-color)">System Error: ${err.message}</div>`;
     }
   }
 
-  function createPlaceholder(item) {
+  function createPlaceholderNode(item) {
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.ticker = item.ticker;
     card.innerHTML = `<div id="canvas_${item.ticker}" style="height:380px;"></div><div class="stats"></div>`;
-    UI.grid.appendChild(card);
     item.node = card;
     item.statsNode = card.querySelector('.stats');
-    state.observer.observe(card);
   }
 
   function initObserver() {
@@ -242,7 +242,6 @@
         shared: true, split: false, valueDecimals: 2,
         backgroundColor: 'rgba(255,255,255,0.95)', borderWidth: 1, borderColor: '#e2e8f0',
         headerFormat: '', 
-        // 單位更新為 B
         pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} B</b><br/>'
       },
       title: {
@@ -271,7 +270,6 @@
   }
 
   function syncItemData(item) {
-    if (!item.chart) return;
     const data = item.rawData;
     let startIdx, endIdx;
 
@@ -291,15 +289,22 @@
 
     if (startIdx === -1) startIdx = 0;
     const slice = data.slice(startIdx, endIdx + 1);
+    
+    // Calculate total for sorting, whether chart exists or not
     let cumulative = 0;
-    const cumArr = slice.map(([ts, val]) => [ts, (cumulative += (val || 0))]);
-
+    slice.forEach(([_, val]) => cumulative += (val || 0));
     item.total = cumulative;
-    item.chart.series[0].setData(slice, false);
-    item.chart.series[1].setData(cumArr, false);
-    item.chart.xAxis[0].setExtremes(slice[0][0], slice[slice.length-1][0], true, false);
-    // 單位更新為 B
-    item.statsNode.innerHTML = `${state.currentLabel} Net Flows: <span class="${cumulative >= 0 ? 'val-pos' : 'val-neg'}">${cumulative.toFixed(2)} B</span>`;
+
+    // If chart is initialized, update it
+    if (item.chart) {
+      let cumSum = 0;
+      const cumArr = slice.map(([ts, val]) => [ts, (cumSum += (val || 0))]);
+      
+      item.chart.series[0].setData(slice, false);
+      item.chart.series[1].setData(cumArr, false);
+      item.chart.xAxis[0].setExtremes(slice[0][0], slice[slice.length-1][0], true, false);
+      item.statsNode.innerHTML = `${state.currentLabel} Net Flows: <span class="${cumulative >= 0 ? 'val-pos' : 'val-neg'}">${cumulative.toFixed(2)} B</span>`;
+    }
   }
 
   function refreshDashboard(btn) {
@@ -314,10 +319,16 @@
       state.currentLabel = 'Custom Range';
     }
 
-    state.etfList.forEach(item => { if (item.isInit) syncItemData(item); });
+    // 1. Calculate totals for ALL items based on raw data, update initialized charts
+    state.etfList.forEach(item => syncItemData(item));
+    
+    // 2. Sort the list by pre-calculated total
     state.etfList.sort((a, b) => b.total - a.total);
+    
+    // 3. Render/re-append nodes in sorted order
     state.etfList.forEach(item => {
       UI.grid.appendChild(item.node);
+      state.observer.observe(item.node); // Start observing sorted node
       if (item.isInit) item.chart.reflow();
     });
   }
